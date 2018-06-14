@@ -3,6 +3,10 @@ GPIO 실행하기
 1. make (gpio_module.ko 생성확인)
 2. sudo insmod gpio_module.ko
 //2번 실행이 안된다면 lsmod해서 gpio_module 있는지 확인
-3.sudo  mknod gpioled c 200 0 (/dev 경로에 gpioled 이름으로 장치 인식)
+
+3. sudo  mknod gpioled c 200 0 (/dev 경로에 gpioled 이름으로 장치 인식)
 4. sudo chmod 666 /dev/gpioled(gpioled 장치에 접근권한 변경)
 5.  ./gpio 1
+
+6. 커널에 올린 디바이스 드라이버 삭제
+sudo rmmod gpio_module
