@@ -1,8 +1,8 @@
-GPIO ½ÇÇàÇÏ±â
-sksea37/
-1. make (gpio_module.ko »ı¼ºÈ®ÀÎ)
+GPIO ì‹¤í–‰í•˜ê¸°
+
+1. make (gpio_module.ko ìƒì„±í™•ì¸)
 2. sudo insmod gpio_module.ko
-//2¹ø ½ÇÇàÀÌ ¾ÈµÈ´Ù¸é lsmodÇØ¼­ gpio_module ÀÖ´ÂÁö È®ÀÎ
-3.sudo  mknod gpioled c 200 0 (/dev °æ·Î¿¡ gpioled ÀÌ¸§À¸·Î ÀåÄ¡ ÀÎ½Ä)
-4. sudo chmod 666 /dev/gpioled(gpioled ÀåÄ¡¿¡ Á¢±Ù±ÇÇÑ º¯°æ)
+//2ë²ˆ ì‹¤í–‰ì´ ì•ˆëœë‹¤ë©´ lsmodí•´ì„œ gpio_module ìˆëŠ”ì§€ í™•ì¸
+3.sudo  mknod gpioled c 200 0 (/dev ê²½ë¡œì— gpioled ì´ë¦„ìœ¼ë¡œ ì¥ì¹˜ ì¸ì‹)
+4. sudo chmod 666 /dev/gpioled(gpioled ì¥ì¹˜ì— ì ‘ê·¼ê¶Œí•œ ë³€ê²½)
 5.  ./gpio 1
