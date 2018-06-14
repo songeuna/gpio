@@ -153,6 +153,7 @@ static ssize_t gpio_read(struct file *inode, char *buff, size_t len, loff_t *off
 //    value = gpio_get_value(GPIO_LED);
 //    if(value)
    
+    //GPIO입력
     if(gpio_get_value(GPIO_LED))
         msg[0]='1';
     else
@@ -166,6 +167,7 @@ static ssize_t gpio_read(struct file *inode, char *buff, size_t len, loff_t *off
     strcat(msg, " from kernel");
 
     // 커널의 msg문자열을 사용자영역(buff의번지)으로 복사한다.
+    // 사용자 메모리 블록 데이터를 커널 메모리 블록 데이터에 써넣는다
     count = copy_to_user(buff, msg, strlen(msg)+1);
 
     printk(KERN_INFO "GPIO Device read : %s\n", msg);

@@ -17,19 +17,22 @@ int main(int argc, char **argv)
 
     printf("GPIO Set : %s\n", argv[1]);
 
-    fd = open("/dev/gpioled", O_RDWR);
+    fd = open("/dev/gpioswitch", O_RDWR);
     if(fd < 0)
     {
         printf("Error : open failed %d \n", errno);
-        system("sudo mknod /dev/gpioled c 200 0");
-        system("sudo chmod 666 /dev/gpioled");
-        fd = open("/dev/gpioled", O_RDWR);
+        system("sudo mknod /dev/gpioswitch c 200 0");
+        system("sudo chmod 666 /dev/gpioswitch");
+        fd = open("/dev/gpioswitch", O_RDWR);
         if( fd < 0)
             return -1;
     }
-    printf("/dev/gpioled opened()\n");
+    printf("/dev/gpioswitch opened()\n");
 
     count = write(fd, argv[1], strlen(argv[1]));
+
+    printf("Write data : %s\n", argv[1]);
+
     if(count < 0)
     {
         printf("Error : write()\n");
@@ -41,7 +44,7 @@ int main(int argc, char **argv)
 
     close(fd);
 
-    printf("/dev/gpioled closed()\n");
+    printf("/dev/gpioswitch closed()\n");
 
     return 0;
 }
