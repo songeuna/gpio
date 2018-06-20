@@ -6,6 +6,8 @@
 #include <linux/gpio.h>             // request_gpio(), gpio_set_val(), gpio_get_val()
 #include <linux/interrupt.h>        // gpio_to_irq(), request_irq()
 #include <linux/timer.h>            // init_timer(), mod_timer(), del_timer(), add_timer()
+//#include <asm/siginfo.h>            // siginfo 구조체를 사용하기 위해
+#include <linux/sched/signal.h>
 
 #define GPIO_MAJOR 200
 #define GPIO_MINOR 0
@@ -42,6 +44,7 @@
 
 static char msg[BUF_SIZE] = {0};
 
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("SEA");
 MODULE_DESCRIPTION("Raspberry Pi First Device Driver");
@@ -49,7 +52,11 @@ MODULE_DESCRIPTION("Raspberry Pi First Device Driver");
 //헤더에 존재하는 구조체
 struct cdev gpio_cdev;
 static int switch_irq;
-static struct timer_list timer; //타이머를 위한 구조체
+static struct timer_list timer;         //타이머를 위한 구조체
+static struct task_struct *task;        //task를 위한 구조체
+
+pid_t pid;
+char pid_valid;
 
 static int gpio_open(struct inode *inod, struct file *fil);
 static int gpio_close(struct inode *inod, struct file *fil);
@@ -91,11 +98,31 @@ static irqreturn_t isr_func(int irq, void *data)
     //static int count;
 
     if(irq == switch_irq && !gpio_get_value(GPIO_LED) && !gpio_get_value(GPIO_LED2))
+    {
         gpio_set_value(GPIO_LED, 1);
+           
+        static struct siginfo sinfo;
+        memset(&sinfo, 0, sizeof(struct siginfo));
+        sinfo.si_signo = SIGIO;
+        sinfo.si_code = SI_USER;
+
+        task = pid_task(find_vpid(pid),PIDTYPE_PID);
+
+        if(task != NULL)
+        {
+            send_sig_info(SIGIO, &sinfo,task);
+        }
+        else
+        {
+            printk("Error : I don't know uwer pid\n");
+        }
+
+    }
         
     else if(irq == switch_irq && gpio_get_value(GPIO_LED) && !gpio_get_value(GPIO_LED2))
         gpio_set_value(GPIO_LED2, 1);
      
+
     else if(irq == switch_irq && gpio_get_value(GPIO_LED) && gpio_get_value(GPIO_LED2))
     { 
         gpio_set_value(GPIO_LED, 0);

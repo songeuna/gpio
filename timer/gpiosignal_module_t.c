@@ -6,6 +6,8 @@
 #include <linux/gpio.h>             // request_gpio(), gpio_set_val(), gpio_get_val()
 #include <linux/interrupt.h>        // gpio_to_irq(), request_irq()
 #include <linux/timer.h>            // init_timer(), mod_timer(), del_timer(), add_timer()
+//#include <asm/siginfo.h>            // siginfo 구조체를 사용하기 위해
+#include <linux/sched/signal.h>
 
 #define GPIO_MAJOR 200
 #define GPIO_MINOR 0
@@ -42,6 +44,7 @@
 
 static char msg[BUF_SIZE] = {0};
 
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("SEA");
 MODULE_DESCRIPTION("Raspberry Pi First Device Driver");
@@ -49,7 +52,11 @@ MODULE_DESCRIPTION("Raspberry Pi First Device Driver");
 //헤더에 존재하는 구조체
 struct cdev gpio_cdev;
 static int switch_irq;
-static struct timer_list timer; //타이머를 위한 구조체
+static struct timer_list timer;         //타이머를 위한 구조체
+static struct task_struct *task;        //task를 위한 구조체
+
+pid_t pid;
+char pid_valid;
 
 static int gpio_open(struct inode *inod, struct file *fil);
 static int gpio_close(struct inode *inod, struct file *fil);
@@ -88,14 +95,35 @@ static void timer_func(unsigned long data)
 
 static irqreturn_t isr_func(int irq, void *data)
 {
-    //static int count;
+    static int count;
 
+    //IRQ발생
     if(irq == switch_irq && !gpio_get_value(GPIO_LED) && !gpio_get_value(GPIO_LED2))
+    {
         gpio_set_value(GPIO_LED, 1);
+           
+        static struct siginfo sinfo;
+        memset(&sinfo, 0, sizeof(struct siginfo));
+        sinfo.si_signo = SIGIO;
+        sinfo.si_code = SI_USER;
+
+        task = pid_task(find_vpid(pid),PIDTYPE_PID); //구조체의 주소값을 알려줌
+
+        if(task != NULL)
+        {
+            send_sig_info(SIGIO, &sinfo,task);
+        }
+        else
+        {
+            printk("Error : I don't know uwer pid\n");
+        }
+
+    }
         
     else if(irq == switch_irq && gpio_get_value(GPIO_LED) && !gpio_get_value(GPIO_LED2))
         gpio_set_value(GPIO_LED2, 1);
      
+
     else if(irq == switch_irq && gpio_get_value(GPIO_LED) && gpio_get_value(GPIO_LED2))
     { 
         gpio_set_value(GPIO_LED, 0);
@@ -110,11 +138,11 @@ static irqreturn_t isr_func(int irq, void *data)
     //IRQ발생 && LED가 ON일때
     else
         gpio_set_value(GPIO_LED, 0);
-
+    */
+    
     printk(KERN_INFO " Called isr_func() : %d\n", count);
     count++;
-    */
-
+    
     return IRQ_HANDLED;
 }
 
@@ -147,11 +175,23 @@ static int gpio_close(struct inode *inod, struct file *fil)
 static ssize_t gpio_write(struct file *inode, const char *buff, size_t len, loff_t *off)
 {
     short count;
+    char *cmd, *str;
+    char *sep = ":";
+    char *endptr, *pidstr;
+    //pid_t pid;
     memset(msg, 0, BUF_SIZE);
 
     // 사용자영역(buff의 번지)에서 msg 배열로 데이터를 복사한다.
     count = copy_from_user(msg, buff, len);
+    str = kstrdup(msg, GFP_KERNEL);
+    cmd = strsep(&str,sep);
+    pidstr = strsep(&str, sep);
+    cmd[1]='\0';
+    printk("Command : %s, Pid : %s\n", cmd, pidstr);
 
+    
+
+    /*
     if((!strcmp(msg,"0")))
     {
         del_timer_sync(&timer);
@@ -166,12 +206,29 @@ static ssize_t gpio_write(struct file *inode, const char *buff, size_t len, loff
         timer.expires = jiffies + msecs_to_jiffies(500);    //0.5초
         add_timer(&timer);
     }
+    */
 
-    gpio_set_value(GPIO_LED, (!strcmp(msg,"0"))? 0 : 1);
-    gpio_set_value(GPIO_LED2, (!strcmp(msg,"2"))? 1 : 0);
+    //gpio_set_value(GPIO_LED, (!strcmp(msg,"0"))? 0 : 1);
+    //gpio_set_value(GPIO_LED2, (!strcmp(msg,"2"))? 1 : 0);
     // = (!strcmp(msg,"0"))? GPIO_CLR(GPIO_LED):GPIO_SET(GPIO_LED);
     
     printk(KERN_INFO "GPIO Device write : %s\n", msg);
+
+    //시그널 발생시 보낼 PID값을 등록
+    pid = simple_strtol(pidstr, &endptr, 10);
+    printk("pid = %d\n",pid);
+
+    if(endptr != NULL)
+    {
+        task = pid_task(find_vpid(pid), PIDTYPE_PID);
+    
+        if(task == NULL)
+        {
+            printk("Error : I don't know user pid\n");
+            return 0;
+        }
+    }
+
 
     return count;
 }
@@ -187,15 +244,16 @@ static ssize_t gpio_read(struct file *inode, char *buff, size_t len, loff_t *off
 //    if(value)
    
     //GPIO입력
+   
     if(gpio_get_value(GPIO_LED))
         msg[0]='1';
     else
         msg[0]='0';
 
-    if(gpio_get_value(GPIO_LED2))
+    /*if(gpio_get_value(GPIO_LED2))
         msg[1]='1';
     else
-        msg[1]='0';
+        msg[1]='0';*/
 
     strcat(msg, " from kernel");
 
